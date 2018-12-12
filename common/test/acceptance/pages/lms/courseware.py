@@ -375,6 +375,30 @@ class CoursewarePage(CoursePage, CompletionOnViewMixin):
         else:
             return self.q(css='.your_words').text[0]
 
+    def is_error_message_present(self):
+        """ Check if LTI error is shown """
+        return self.q(css=".error_message").is_present()
+
+    def is_iframe_present(self):
+        """ Check if LTI iframe is present"""
+        return self.q(css="iframe").is_present()
+
+    def is_launch_url_present(self):
+        """ Check if LTI launch link is present"""
+        return self.q(css=".link_lti_new_window").is_present()
+
+    @property
+    def lti_content(self):
+        """ return LTI content"""
+        iframe_name = self.q(css='.ltiLaunchFrame').attrs("name")[0]
+        self.browser.switch_to.frame(iframe_name)
+        self.wait_for_element_presence(".result", "Element not present.")
+        return self.q(css=".result").text[0]
+
+    def submit_lti_answer(self, button_id):
+        """ Click on Submit button"""
+        self.q(css=button_id).first.click()
+
 
 class CoursewareSequentialTabPage(CoursePage):
     """
