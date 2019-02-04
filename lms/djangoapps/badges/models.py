@@ -47,6 +47,8 @@ class CourseBadgesDisabledError(Exception):
 class BadgeClass(models.Model):
     """
     Specifies a badge class to be registered with a backend.
+
+    .. no_pii:
     """
     slug = models.SlugField(max_length=255, validators=[validate_lowercase])
     issuing_component = models.SlugField(max_length=50, default='', blank=True, validators=[validate_lowercase])
@@ -140,6 +142,8 @@ class BadgeClass(models.Model):
 class BadgeAssertion(TimeStampedModel):
     """
     Tracks badges on our side of the badge baking transaction
+
+    .. no_pii:
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     badge_class = models.ForeignKey(BadgeClass, on_delete=models.CASCADE)
@@ -174,6 +178,8 @@ BadgeAssertion._meta.get_field('created').db_index = True
 class CourseCompleteImageConfiguration(models.Model):
     """
     Contains the icon configuration for badges for a specific course mode.
+
+    .. no_pii:
     """
     mode = models.CharField(
         max_length=125,
@@ -228,6 +234,8 @@ class CourseEventBadgesConfiguration(ConfigurationModel):
     """
     Determines the settings for meta course awards-- such as completing a certain
     number of courses or enrolling in a certain number of them.
+
+    .. no_pii:
     """
     courses_completed = models.TextField(
         blank=True, default='',

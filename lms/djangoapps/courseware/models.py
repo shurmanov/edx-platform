@@ -74,6 +74,8 @@ class ChunkingManager(models.Manager):
 class StudentModule(models.Model):
     """
     Keeps student state for a particular module in a particular course.
+
+    .. no_pii:
     """
     objects = ChunkingManager()
     MODEL_TAGS = ['course_id', 'module_type']
@@ -163,8 +165,11 @@ class StudentModule(models.Model):
 
 
 class BaseStudentModuleHistory(models.Model):
-    """Abstract class containing most fields used by any class
-    storing Student Module History"""
+    """
+    Abstract class containing most fields used by any class storing Student Module History
+
+    .. no_pii:
+    """
     objects = ChunkingManager()
     HISTORY_SAVING_TYPES = {'problem'}
 
@@ -253,6 +258,8 @@ class StudentModuleHistory(BaseStudentModuleHistory):
 class XBlockFieldBase(models.Model):
     """
     Base class for all XBlock field storage.
+
+    .. no_pii:
     """
     objects = ChunkingManager()
 
@@ -317,6 +324,8 @@ class XModuleStudentInfoField(XBlockFieldBase):
 class OfflineComputedGrade(models.Model):
     """
     Table of grades computed offline for a given user and course.
+
+    .. no_pii:
     """
     user = models.ForeignKey(User, db_index=True, on_delete=models.CASCADE)
     course_id = CourseKeyField(max_length=255, db_index=True)
@@ -338,6 +347,8 @@ class OfflineComputedGradeLog(models.Model):
     """
     Log of when offline grades are computed.
     Use this to be able to show instructor when the last computed grades were done.
+
+    .. no_pii:
     """
 
     class Meta(object):
@@ -359,6 +370,8 @@ class StudentFieldOverride(TimeStampedModel):
     Holds the value of a specific field overriden for a student.  This is used
     by the code in the `lms.djangoapps.courseware.student_field_overrides` module to provide
     overrides of xblock fields on a per user basis.
+
+    .. no_pii:
     """
     course_id = CourseKeyField(max_length=255, db_index=True)
     location = UsageKeyField(max_length=255, db_index=True)
@@ -373,9 +386,12 @@ class StudentFieldOverride(TimeStampedModel):
 
 
 class DynamicUpgradeDeadlineConfiguration(ConfigurationModel):
-    """ Dynamic upgrade deadline configuration.
+    """
+    Dynamic upgrade deadline configuration.
 
     This model controls the behavior of the dynamic upgrade deadline for self-paced courses.
+
+    .. no_pii:
     """
     class Meta(object):
         app_label = 'courseware'
@@ -406,6 +422,8 @@ class CourseDynamicUpgradeDeadlineConfiguration(OptOutDynamicUpgradeDeadlineMixi
 
     This model controls dynamic upgrade deadlines on a per-course run level, allowing course runs to
     have different deadlines or opt out of the functionality altogether.
+
+    .. no_pii:
     """
     KEY_FIELDS = ('course_id',)
 
@@ -428,6 +446,8 @@ class OrgDynamicUpgradeDeadlineConfiguration(OptOutDynamicUpgradeDeadlineMixin, 
 
     This model controls dynamic upgrade deadlines on a per-org level, allowing organizations to
     have different deadlines or opt out of the functionality altogether.
+
+    .. no_pii:
     """
     KEY_FIELDS = ('org_id',)
 

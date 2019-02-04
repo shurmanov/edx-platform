@@ -758,6 +758,35 @@ def _get_xsscommitlint_count(filename):
 
 @task
 @needs('pavelib.prereqs.install_python_prereqs')
+@timed
+def run_pii_check(options):
+    """
+    Guarantee that all Django models are PII-annotated.
+    """
+    try:
+        sh(
+            "export DJANGO_SETTINGS_MODULE=cms.envs.test; "
+            "code_annotations django_find_annotations "
+            "--config_file .pii_annotations.yml --report_path pii_report/ "
+            "--lint --report --coverage"
+        )
+        return True
+    except BuildFailure, error_message:
+        fail_quality('pii_check', 'FAILURE: {}'.format(error_message))
+    try:
+        sh(
+            "export DJANGO_SETTINGS_MODULE=lms.envs.test; "
+            "code_annotations django_find_annotations "
+            "--config_file .pii_annotations.yml --report_path pii_report/ "
+            "--lint --report --coverage"
+        )
+        return True
+    except BuildFailure, error_message:
+        fail_quality('pii_check', 'FAILURE: {}'.format(error_message))
+
+
+@task
+@needs('pavelib.prereqs.install_python_prereqs')
 @cmdopts([
     ("compare-branch=", "b", "Branch to compare against, defaults to origin/master"),
     ("percentage=", "p", "fail if diff-quality is below this percentage"),

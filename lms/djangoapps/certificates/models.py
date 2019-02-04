@@ -130,6 +130,8 @@ class CertificateWhitelist(models.Model):
     regardless of their grade unless they are on the
     embargoed country restriction list
     (allow_certificate set to False in userprofile).
+
+    .. no_pii: It is possible that information here is identifiable, but certificates aren't retired so we need this.
     """
     class Meta(object):
         app_label = "certificates"
@@ -213,6 +215,8 @@ class EligibleCertificateManager(models.Manager):
 class GeneratedCertificate(models.Model):
     """
     Base model for generated certificates
+
+    .. no_pii: Information that may be PII in a cert is stored and retired elsewhere
     """
     # Import here instead of top of file since this module gets imported before
     # the course_modes app is loaded, resulting in a Django deprecation warning.
@@ -374,6 +378,8 @@ class GeneratedCertificate(models.Model):
 class CertificateGenerationHistory(TimeStampedModel):
     """
     Model for storing Certificate Generation History.
+
+    .. no_pii:
     """
 
     course_id = CourseKeyField(max_length=255)
@@ -436,6 +442,8 @@ class CertificateGenerationHistory(TimeStampedModel):
 class CertificateInvalidation(TimeStampedModel):
     """
     Model for storing Certificate Invalidation.
+
+    .. no_pii:
     """
     generated_certificate = models.ForeignKey(GeneratedCertificate, on_delete=models.CASCADE)
     invalidated_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -527,7 +535,7 @@ def certificate_status_for_student(student, course_id):
 
 
 def certificate_status(generated_certificate):
-    '''
+    """
     This returns a dictionary with a key for status, and other information.
     The status is one of the following:
 
@@ -554,7 +562,7 @@ def certificate_status(generated_certificate):
 
     If the student has been graded, the dictionary also contains their
     grade for the course with the key "grade".
-    '''
+    """
     # Import here instead of top of file since this module gets imported before
     # the course_modes app is loaded, resulting in a Django deprecation warning.
     from course_modes.models import CourseMode
@@ -610,7 +618,8 @@ def certificate_info_for_user(user, course_id, grade, user_is_whitelisted, user_
 
 
 class ExampleCertificateSet(TimeStampedModel):
-    """A set of example certificates.
+    """
+    A set of example certificates.
 
     Example certificates are used to verify that certificate
     generation is working for a particular course.
@@ -619,6 +628,7 @@ class ExampleCertificateSet(TimeStampedModel):
     (e.g. honor and verified), in which case we generate
     multiple example certificates for the course.
 
+    .. no_pii:
     """
     course_key = CourseKeyField(max_length=255, db_index=True)
 
@@ -701,7 +711,8 @@ def _make_uuid():
 
 
 class ExampleCertificate(TimeStampedModel):
-    """Example certificate.
+    """
+    Example certificate.
 
     Example certificates are used to verify that certificate
     generation is working for a particular course.
@@ -717,6 +728,7 @@ class ExampleCertificate(TimeStampedModel):
 
     3) We use dummy values.
 
+    .. no_pii:
     """
     class Meta(object):
         app_label = "certificates"
@@ -870,12 +882,15 @@ class ExampleCertificate(TimeStampedModel):
 
 
 class CertificateGenerationCourseSetting(TimeStampedModel):
-    """Enable or disable certificate generation for a particular course.
+    """
+    Enable or disable certificate generation for a particular course.
 
     In general, we should only enable self-generated certificates
     for a course once we successfully generate example certificates
     for the course.  This is enforced in the UI layer, but
     not in the data layer.
+
+    .. no_pii:
     """
     course_key = CourseKeyField(max_length=255, db_index=True)
 
@@ -973,6 +988,7 @@ class CertificateGenerationConfiguration(ConfigurationModel):
     will appear for courses that have enabled self-generated
     certificates.
 
+    .. no_pii:
     """
     class Meta(ConfigurationModel.Meta):
         app_label = "certificates"
@@ -993,6 +1009,8 @@ class CertificateHtmlViewConfiguration(ConfigurationModel):
                 "logo_src": "http://www.edx.org/static/images/honor-logo.png"
             }
         }
+
+    .. no_pii:
     """
     class Meta(ConfigurationModel.Meta):
         app_label = "certificates"
@@ -1029,6 +1047,7 @@ class CertificateTemplate(TimeStampedModel):
     A particular course may have several kinds of certificate templates
     (e.g. honor and verified).
 
+    .. no_pii:
     """
     name = models.CharField(
         max_length=255,
@@ -1071,7 +1090,8 @@ class CertificateTemplate(TimeStampedModel):
         max_length=2,
         blank=True,
         null=True,
-        help_text=u'Only certificates for courses in the selected language will be rendered using this template. Course language is determined by the first two letters of the language code.'
+        help_text=u'Only certificates for courses in the selected language will be rendered using this template. '
+                  u'Course language is determined by the first two letters of the language code.'
     )
 
     def __unicode__(self):
@@ -1104,6 +1124,7 @@ class CertificateTemplateAsset(TimeStampedModel):
     This model stores assets used in custom web certificate templates
     such as image, css files.
 
+    .. no_pii:
     """
     description = models.CharField(
         max_length=255,
