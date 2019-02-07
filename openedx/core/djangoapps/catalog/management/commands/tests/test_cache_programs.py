@@ -16,11 +16,12 @@ from openedx.core.djangoapps.site_configuration.tests.mixins import SiteMixin
 from openedx.core.djangolib.testing.utils import CacheIsolationTestCase, skip_unless_lms
 from student.tests.factories import UserFactory
 
+from xmodule.modulestore.tests.django_utils import ModuleStoreTestCase
 from xmodule.modulestore.tests.factories import CourseFactory
 
 @skip_unless_lms
 @httpretty.activate
-class TestCachePrograms(CatalogIntegrationMixin, CacheIsolationTestCase, SiteMixin):
+class TestCachePrograms(CatalogIntegrationMixin, CacheIsolationTestCase, ModuleStoreTestCase, SiteMixin):
     ENABLED_CACHES = ['default']
 
     def setUp(self):
@@ -132,7 +133,7 @@ class TestCachePrograms(CatalogIntegrationMixin, CacheIsolationTestCase, SiteMix
             """
             Mocks response
             """
-
+            import pudb; pudb.set_trace()
             expected = {
                 'exclude_utm': ['1'],
                 'page': [str(page_number)],
@@ -146,8 +147,8 @@ class TestCachePrograms(CatalogIntegrationMixin, CacheIsolationTestCase, SiteMix
                 'results': course_runs
             }
 
-        return (200, headers, json.dumps(body))
-
+            return (200, headers, json.dumps(body))
+        import pudb; pudb.set_trace()
         httpretty.register_uri(
             httpretty.GET,
             self.course_run_url,
@@ -163,6 +164,7 @@ class TestCachePrograms(CatalogIntegrationMixin, CacheIsolationTestCase, SiteMix
         # the one test case which covers the case where the user is missing. However,
         # that deletion causes "OperationalError: no such table: wiki_attachmentrevision"
         # when run on Jenkins.
+        import pudb; pudb.set_trace()
         UserFactory(username=self.catalog_integration.service_username)
 
         programs = {
