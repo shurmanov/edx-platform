@@ -17,6 +17,7 @@ from opaque_keys.edx.django.models import CourseKeyField
 from opaque_keys.edx.keys import CourseKey
 
 from badges.utils import deserialize_count_specs
+from openedx.core.djangolib.markup import Text
 from xmodule.modulestore.django import modulestore
 
 
@@ -61,9 +62,9 @@ class BadgeClass(models.Model):
     image = models.ImageField(upload_to='badge_classes', validators=[validate_badge_image])
 
     def __unicode__(self):
-        return u"<Badge '{slug}' for '{issuing_component}'>".format(
+        return Text(u"<Badge '{slug}' for '{issuing_component}'>".format(
             slug=self.slug, issuing_component=self.issuing_component
-        )
+        ))
 
     @classmethod
     def get_badge_class(
@@ -153,10 +154,10 @@ class BadgeAssertion(TimeStampedModel):
     assertion_url = models.URLField()
 
     def __unicode__(self):
-        return u"<{username} Badge Assertion for {slug} for {issuing_component}".format(
+        return Text(u"<{username} Badge Assertion for {slug} for {issuing_component}".format(
             username=self.user.username, slug=self.badge_class.slug,
             issuing_component=self.badge_class.issuing_component,
-        )
+        ))
 
     @classmethod
     def assertions_for_user(cls, user, course_id=None):
@@ -203,10 +204,10 @@ class CourseCompleteImageConfiguration(models.Model):
     )
 
     def __unicode__(self):
-        return u"<CourseCompleteImageConfiguration for '{mode}'{default}>".format(
+        return Text(u"<CourseCompleteImageConfiguration for '{mode}'{default}>".format(
             mode=self.mode,
             default=u" (default)" if self.default else u''
-        )
+        ))
 
     def clean(self):
         """
@@ -264,7 +265,7 @@ class CourseEventBadgesConfiguration(ConfigurationModel):
     )
 
     def __unicode__(self):
-        return u"<CourseEventBadgesConfiguration ({})>".format(u"Enabled" if self.enabled else u"Disabled")
+        return Text(u"<CourseEventBadgesConfiguration ({})>".format(u"Enabled" if self.enabled else u"Disabled"))
 
     @property
     def completed_settings(self):

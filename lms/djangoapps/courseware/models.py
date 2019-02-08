@@ -27,6 +27,8 @@ from six import text_type
 import coursewarehistoryextended
 from opaque_keys.edx.django.models import BlockTypeKeyField, CourseKeyField, UsageKeyField
 
+from openedx.core.djangolib.markup import Text
+
 log = logging.getLogger("edx.courseware")
 
 
@@ -278,7 +280,9 @@ class XBlockFieldBase(models.Model):
 
     def __unicode__(self):
         keys = [field.name for field in self._meta.get_fields() if field.name not in ('created', 'modified')]
-        return u'{}<{!r}'.format(self.__class__.__name__, {key: getattr(self, key) for key in keys})
+        return Text(
+            u'{}<{!r}'.format(self.__class__.__name__, {key: getattr(self, key) for key in keys})
+        )
 
 
 class XModuleUserStateSummaryField(XBlockFieldBase):
