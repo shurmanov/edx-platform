@@ -59,7 +59,7 @@ from openedx.core.djangoapps.user_api.errors import (
 )
 from openedx.core.djangolib.testing.utils import skip_unless_lms
 from openedx.core.lib.tests import attr
-from student.models import PendingEmailChange
+from student.models import AccountRecovery, PendingEmailChange, PendingSecondaryEmailChange
 from student.tests.factories import UserFactory
 from student.tests.tests import UserSettingsEventTestMixin
 
@@ -146,6 +146,45 @@ class TestAccountApi(UserSettingsEventTestMixin, EmailTemplateTagMixin, Retireme
         update_account_settings(self.user, {"name": "Donald Duck"}, username=self.user.username)
         account_settings = get_account_settings(self.default_request)[0]
         self.assertEqual("Donald Duck", account_settings["name"])
+
+        with self.assertRaises(UserNotAuthorized):
+            update_account_settings(self.different_user, {"name": "Pluto"}, username=self.user.username)
+
+    def test_update_recovery_email(self):
+        """
+        Test the difference in behavior when a recovery email is supplied to update_account_settings.
+        """
+        update_account_settings(self.user, {"secondary_email": "secondary_email@yopmail.com"})
+        account_settings = get_account_settings(self.default_request)[0]
+        self.assertEqual("secondary_email@yopmail.com", account_settings["secondary_email"])
+
+        # Verify that email change request was initiated.
+        pending_change = PendingSecondaryEmailChange.objects.filter(user=self.user)
+        self.assertEqual(0, len(pending_change))
+
+        # make sure Account Recovery record was created
+        account_recovery = AccountRecovery.objects.filter(user=self.user)
+        self.assertTrue(account_recovery.exists())
+        self.assertFalse(AccountRecovery.get().is_active)
+
+        # Activate account recovery
+        account_recovery.activate()
+
+
+        # Update the account recovery email address and make sure it remains
+        # in-active until learner verified via the email.
+        update_account_settings(self.user, {"secondary_email": "secondary_email_updated@yopmail.com"})
+        account_settings = get_account_settings(self.default_request)[0]
+        self.assertEqual("secondary_email_updated@yopmail.com", account_settings["secondary_email"])
+
+        # Verify that email change request was initiated.
+        pending_change = PendingSecondaryEmailChange.objects.filter(user=self.user)
+        self.assertEqual(0, len(pending_change))
+
+        # make sure Account Recovery record was created
+        account_recovery = AccountRecovery.objects.filter(user=self.user)
+        self.assertTrue(account_recovery.exists())
+        self.assertFalse(AccountRecovery.get().is_active)
 
         with self.assertRaises(UserNotAuthorized):
             update_account_settings(self.different_user, {"name": "Pluto"}, username=self.user.username)
