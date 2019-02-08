@@ -12,7 +12,7 @@ from organizations.models import Organization
 from pytz import utc
 
 from openedx.core.djangoapps.oauth_dispatch.toggles import ENFORCE_JWT_SCOPES
-from openedx.core.djangolib.markup import Text
+from openedx.core.djangolib.markup import HTML
 from openedx.core.lib.request_utils import get_request_or_stub
 
 
@@ -36,7 +36,7 @@ class RestrictedApplication(models.Model):
         """
         Return a unicode representation of this object
         """
-        return Text(u"<RestrictedApplication '{name}'>".format(
+        return HTML(u"<RestrictedApplication '{name}'>".format(
             name=self.application.name
         ))
 
