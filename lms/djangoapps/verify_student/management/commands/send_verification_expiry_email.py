@@ -4,31 +4,24 @@ Django admin command to send verification expiry email to learners
 import logging
 import time
 from datetime import datetime, timedelta
-from smtplib import SMTPException
 
-from celery import task
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.mail import send_mail
+from django.contrib.sites.models import Site
 from django.core.management.base import BaseCommand
 from django.urls import reverse
-from django.utils.translation import ugettext as _
-from edxmako.shortcuts import render_to_string
+from edx_ace import ace
+from edx_ace.recipient import Recipient
 from pytz import UTC
 from util.query import use_read_replica_if_available
+from verify_student.message_types import VerificationExpiry
 
 from lms.djangoapps.verify_student.models import SoftwareSecurePhotoVerification
-from openedx.core.djangoapps.site_configuration import helpers as configuration_helpers
+from openedx.core.djangoapps.ace_common.template_context import get_base_template_context
+from openedx.core.djangoapps.lang_pref import LANGUAGE_KEY
+from openedx.core.djangoapps.user_api.preferences.api import get_user_preference
+from openedx.core.lib.celery.task_utils import emulate_http_request
 
-subject = _("Your {platform_name} Verification has Expired").format(platform_name=settings.PLATFORM_NAME)
-template = 'emails/verification_expiry_email.txt'
-verification_expiry_email_vars = {
-    'platform_name': settings.PLATFORM_NAME,
-    'lms_verification_link': '{}{}'.format(settings.LMS_ROOT_URL, reverse("verify_student_reverify")),
-    'help_center_link': settings.ID_VERIFICATION_SUPPORT_LINK
-}
-
-ACE_ROUTING_KEY = getattr(settings, 'ACE_ROUTING_KEY', None)
 logger = logging.getLogger(__name__)
 
 
@@ -99,8 +92,8 @@ class Command(BaseCommand):
         start_date = datetime.now(UTC) - timedelta(days=days)
         query = SoftwareSecurePhotoVerification.objects.filter(status='approved',
                                                                expiry_date__lt=datetime.now(UTC),
-                                                               expiry_date__gt=start_date
-                                                               ).order_by('user_id')
+                                                               expiry_date__gte=start_date
+                                                               )
         sspv = use_read_replica_if_available(query)
 
         total_verification = sspv.count()
@@ -108,6 +101,9 @@ class Command(BaseCommand):
             logger.info("No approved expired entries found in SoftwareSecurePhotoVerification for the "
                         "date range {} - {}".format(start_date.date(), datetime.now(UTC).date()))
             return
+
+        if total_verification < batch_size:
+            batch_size = total_verification
 
         # This number does not necessarily represent the actual number of learners to which email was sent
         # The email will be sent to equal or fewer learners. It will be fewer than the total_verification
@@ -117,17 +113,15 @@ class Command(BaseCommand):
 
         # If email was sent and user did not re-verify then this date will be used as the criteria for resending email
         date_resend_days_ago = datetime.now(UTC) - timedelta(days=resend_days)
-        users = sspv.values('user_id').distinct()
         batch_verifications = []
 
-        for user in users:
-            verification = self.find_recent_verification(sspv, user['user_id'])
+        for verification in sspv:
             if not verification.expiry_email_date or verification.expiry_email_date < date_resend_days_ago:
                 batch_verifications.append(verification)
 
                 if len(batch_verifications) == batch_size or total_verification < batch_size:
                     if not options['dry_run']:
-                        send_verification_expiry_email.delay(batch_verifications)
+                        send_verification_expiry_email(batch_verifications)
                         time.sleep(sleep_time)
                     else:
                         logger.info(
@@ -137,38 +131,33 @@ class Command(BaseCommand):
                     total_verification = total_verification - batch_size
                     batch_verifications = []
 
-    def find_recent_verification(self, model, user_id):
-        """ Find the most recent expired verification for user. """
-        return model.filter(user_id=user_id).latest('updated_at')
 
-
-@task(routing_key=ACE_ROUTING_KEY)
 def send_verification_expiry_email(batch_verifications):
     """
-    Spins a task to send verification expiry email to the learners in the batch
+    Spins a task to send verification expiry email to the learners in the batch using edx_ace
     If the email is successfully sent change the expiry_email_date to reflect when the
     email was sent
     """
+    site = Site.objects.get(name=settings.SITE_NAME)
+    message_context = get_base_template_context(site)
+    message_context.update({
+        'platform_name': settings.PLATFORM_NAME,
+        'lms_verification_link': '{}{}'.format(settings.LMS_ROOT_URL, reverse("verify_student_reverify")),
+        'help_center_link': settings.ID_VERIFICATION_SUPPORT_LINK
+    })
+
+    expiry_email = VerificationExpiry(context=message_context)
+
     for verification in batch_verifications:
         user = User.objects.get(id=verification.user_id)
-        verification_expiry_email_vars['full_name'] = user.profile.name
-        message = render_to_string(template, verification_expiry_email_vars)
-
-        from_addr = configuration_helpers.get_value(
-            'email_from_address',
-            settings.DEFAULT_FROM_EMAIL
-        )
-        dest_addr = user.email
-
-        try:
-            send_mail(
-                subject,
-                message,
-                from_addr,
-                [dest_addr],
-                fail_silently=False
+        with emulate_http_request(site=site, user=user):
+            msg = expiry_email.personalize(
+                recipient=Recipient(user.username, user.email),
+                language=get_user_preference(user, LANGUAGE_KEY),
+                user_context={
+                    'full_name': user.profile.name,
+                }
             )
+            ace.send(msg)
             verification_qs = SoftwareSecurePhotoVerification.objects.filter(pk=verification.pk)
             verification_qs.update(expiry_email_date=datetime.now(UTC))
-        except SMTPException:
-            logger.warning("Failure in sending verification expiry e-mail to user %s", verification.user_id)

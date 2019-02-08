@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
 from django.test import TestCase
+from django.contrib.sites.models import Site
 from mock import patch
 from pytz import UTC
 from student.tests.factories import UserFactory
@@ -34,6 +35,7 @@ class TestSendVerificationExpiryEmail(MockS3Mixin, TestCase):
         super(TestSendVerificationExpiryEmail, self).setUp()
         connection = boto.connect_s3()
         connection.create_bucket(FAKE_SETTINGS['SOFTWARE_SECURE']['S3_BUCKET'])
+        Site.objects.create(domain='edx.org', name='edx.org')
 
     def create_and_submit(self, user):
         """ Helper method that lets us create new SoftwareSecurePhotoVerifications """
@@ -70,22 +72,16 @@ class TestSendVerificationExpiryEmail(MockS3Mixin, TestCase):
         expiry_email_date = SoftwareSecurePhotoVerification.objects.get(pk=verification.pk).expiry_email_date
         self.assertIsNone(expiry_email_date)
 
-    def test_recent_approved_verification(self):
+    def test_expiry_date_null(self):
         """
-        Test that the expiry_email_date for most recent approved and expired verification is updated.
-        A user can have multiple approved and expired Software Secure Photo Verification over the years
-        Only the most recent is considered for course verification
+        Test that the SoftwareSecurePhotoVerification object is not filtered if it's expiry_date is set
+        to NULL
         """
+        # for outdated verification the expiry_date is set NULL verify_student/views.py:1164
         user = UserFactory.create()
         outdated_verification = self.create_and_submit(user)
         outdated_verification.status = 'approved'
-        outdated_verification.expiry_date = datetime.now(UTC) - timedelta(days=1)
         outdated_verification.save()
-
-        recent_verification = self.create_and_submit(user)
-        recent_verification.status = 'approved'
-        recent_verification.expiry_date = datetime.now(UTC) - timedelta(days=1)
-        recent_verification.save()
 
         call_command('send_verification_expiry_email')
 
@@ -94,6 +90,9 @@ class TestSendVerificationExpiryEmail(MockS3Mixin, TestCase):
         self.assertIsNone(expiry_email_date)
 
     def test_send_verification_expiry_email(self):
+        """
+        Test that checks for valid criteria the email is sent and expiry_email_date is set
+        """
         user = UserFactory.create()
         verification = self.create_and_submit(user)
         verification.status = 'approved'
